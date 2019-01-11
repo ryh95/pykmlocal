@@ -1,5 +1,7 @@
 import os, sys, subprocess
 from distutils.core import setup, Extension
+
+import numpy as np
 from Cython.Distutils import build_ext
 
 if 'setuptools.extension' in sys.modules:
@@ -25,4 +27,5 @@ setup(name='pykmlocal',
                                       ],
                              language="c++", # Cython: create C++ source
                              )],
+      include_dirs=[".",np.get_include() ]
       )

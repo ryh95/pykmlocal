@@ -17,8 +17,16 @@ def test_kmeans():
                      [-102, -100],
                      ],
                     dtype=np.float)
-    codebook = kmeans( data, 3)
+    term = (100, 0, 0, 0,  # run for 1 stage (maxTotStage)
+     0.10,  # min consec RDL
+     0.10,  # min accum RDL
+     3,  # max run stages
+     0.50,  # init. prob. of acceptance
+     10,  # temp. run length
+     0.95)
+    codebook = kmeans( data, 3, 'hybrid',term)
     # XXX should do test here
+    return codebook
 
 def test_kmeans_random():
     data = np.random.randn( 1000, 3 )
@@ -32,3 +40,5 @@ def test_kmeans_random():
                 np.allclose( codebook2, codebook3))
     assert not allclose
     # XXX should do more tests here
+
+test_kmeans()

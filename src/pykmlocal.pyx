@@ -19,6 +19,18 @@ cdef extern from "KMlocal.h":
         KMlocalLloyds(KMfilterCenters, KMterm)
         KMfilterCenters execute()
         KMfilterCenters* execute_to_new()
+    cdef cppclass KMlocalSwap:
+        KMlocalSwap(KMfilterCenters, KMterm)
+        KMfilterCenters execute()
+        KMfilterCenters* execute_to_new()
+    cdef cppclass KMlocalEZ_Hybrid:
+        KMlocalEZ_Hybrid(KMfilterCenters, KMterm)
+        KMfilterCenters execute()
+        KMfilterCenters* execute_to_new()
+    cdef cppclass KMlocalHybrid:
+        KMlocalHybrid(KMfilterCenters, KMterm)
+        KMfilterCenters execute()
+        KMfilterCenters* execute_to_new()
 
 cdef extern from "KMdata.h":
     cdef cppclass KMdata:
@@ -70,28 +82,40 @@ cdef class KMLocal:
 
         self.k = k_
 
-    def run(self, algorithm='lloyds'):
+    def run(self, algorithm, a,  b,  c,  d, mcr,  mar,  mrs, ipa,  trl,  trf):
         # allocate new centers
         cdef KMfilterCenters* ctrs
         ctrs = new KMfilterCenters( self.k, deref(self.dataPts))
 
         # allocate termination critereon
-        cdef KMterm *term = new KMterm(1, 0, 0, 0,    #  run for 1 stage (maxTotStage)
-                                  0.10,			#  min consec RDL
-                                  0.10,			#  min accum RDL
-                                  100,			#  max run stages
-                                  0.50,			#  init. prob. of acceptance
-                                  10,			#  temp. run length
-                                  0.95)			#  temp. reduction factor
+        cdef KMterm *term = new KMterm(a, b, c, d,    #  run for 1 stage (maxTotStage)
+                                  mcr,			#  min consec RDL
+                                  mar,			#  min accum RDL
+                                  mrs,			#  max run stages
+                                  ipa,			#  init. prob. of acceptance
+                                  trl,			#  temp. run length
+                                  trf)			#  temp. reduction factor
         cdef KMlocalLloyds* kmLloyds
+        cdef KMlocalSwap* kmSwap
+        cdef KMlocalEZ_Hybrid* kmEZHybrid
+        cdef KMlocalHybrid* kmHybrid
         cdef int i
         cdef int j
-        cdef KMcenter c
+        cdef KMcenter center
         cdef np.ndarray[np.float_t, ndim=2] codebook
 
-        if algorithm=='lloyds':
+        if algorithm=='lloyd':
              kmLloyds = new KMlocalLloyds(deref(ctrs), deref(term)) # repeated Lloyd's
              ctrs = kmLloyds.execute_to_new()
+        elif algorithm == 'swap':
+            kmSwap = new KMlocalSwap(deref(ctrs), deref(term))
+            ctrs = kmSwap.execute_to_new()
+        elif algorithm == 'EZ-hybrid':
+            km_ez_hybrid = new KMlocalEZ_Hybrid(deref(ctrs), deref(term))
+            ctrs = km_ez_hybrid.execute_to_new()
+        elif algorithm == 'hybrid':
+            km_hybrid = new KMlocalHybrid(deref(ctrs), deref(term))
+            ctrs = km_hybrid.execute_to_new()
         else:
             raise ValueError('unknown algorithm "%s"'%algorithm)
 
@@ -99,13 +123,13 @@ cdef class KMLocal:
         codebook = np.empty( (ctrs.getK(), ctrs.getDim()), dtype=np.float)
         with cython.boundscheck(False):
             for i in range( ctrs.getK() ):
-                c = ctrs.get(i)
+                center = ctrs.get(i)
                 for j in range( ctrs.getDim() ):
-                    codebook[i,j] = c[j]
+                    codebook[i,j] = center[j]
 
         return codebook
 
-def kmeans( data, k):
+def kmeans( data, k, algorithm,term):
     kml = KMLocal( data, k )
-    codebook = kml.run()
+    codebook = kml.run(algorithm,term[0],term[1],term[2],term[3],term[4],term[5],term[6],term[7],term[8],term[9])
     return codebook
